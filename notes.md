@@ -27,3 +27,6 @@ Could have multiple files. Multiple blech.
 Keep it single source of truth with Confidence. Extensible JSON with key/val merge.
 
 Confidence will generate the rejoice.json by applying the proper filter, merging $base with `confidence -c --filter.env="myenv" > rejoice.json`
+
+## Server Methods, Dawg
+
