@@ -1,0 +1,37 @@
+{
+  "name": "eudaimonia",
+  "version": "0.0.1",
+  "description": "Be Hapi - with virtue!",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "./node_modules/.bin/babel src -d lib",
+    "lint": "eslint src test",
+    "precommit": "npm run lint",
+    "test": "lab -t 100"
+  },
+  "keywords": [],
+  "author": "Daniel Casper",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-cli": "^6.4.5",
+    "babel-eslint": "^4.1.6",
+    "babel-preset-es2015": "^6.3.13",
+    "code": "^2.1.0",
+    "eslint": "^1.10.3",
+    "eslint-config-hapi": "^8.0.1",
+    "eslint-plugin-hapi": "^4.0.0",
+    "husky": "^0.10.2",
+    "lab": "^8.2.0"
+  },
+  "babel": {
+    "babelrc": true
+  },
+  "eslintConfig": {
+    "env": {
+      "node": true
+    }
+  },
+  "dependencies": {
+    "hapi": "^12.1.0"
+  }
+}
