@@ -1,0 +1,54 @@
+{
+    "connections": [{
+        "port": 8088,
+        "labels": ["http"]
+    }, {
+        "port": 8088,
+        "labels": ["api"]
+    }],
+    "plugins": {
+        "$filter": "env",
+        "$base": {
+            "bell": [{ "select": "http" }],
+            "blipp": [{}],
+            "hapi-auth-cookie": [{ "select": "http" }],
+
+            "./authentication": [{ "select": ["http", "api"] }],
+
+            "./controllers": [{ "select": ["http", "api"] }],
+
+            "./models": [{ "select": ["http", "api"] }],
+
+            "./routes": [{ "select": ["http"] }],
+
+            "./api": [{ "select": ["api"] }],
+
+            "good": {
+                "opsInterval": 5000,
+            },
+        },
+        "dev": {
+            "blipp": [{}],
+            "good": {
+                "reporters": [{
+                    "reporter": "good-console",
+                    "events": { "ops": "*", "log": "*" }
+                }]
+            }
+        },
+        "prod": {
+            "good": {
+                "reporters": [{
+                    "reporter": "good-file",
+                    "events": { "log": "*" },
+                    "config": "./log.log"
+                }, {
+                    "reporter": "good-file",
+                    "events": { "ops": "*" },
+                    "config": "./ops.log"
+                }]
+            }
+        }
+    }
+}
+
