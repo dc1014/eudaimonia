@@ -33,6 +33,11 @@
     }
   },
   "dependencies": {
-    "hapi": "^12.1.0"
+    "async": "^1.5.2",
+    "bell": "^6.1.0",
+    "blipp": "^2.3.0",
+    "hapi": "^12.1.0",
+    "hapi-auth-cookie": "^5.0.0",
+    "hoek": "^3.0.4"
   }
 }
