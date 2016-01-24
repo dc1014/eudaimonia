@@ -4,10 +4,11 @@
   "description": "Be Hapi - with virtue!",
   "main": "index.js",
   "scripts": {
-    "lint": "npm run lint-ch1; npm run lint-ch2; npm run lint-ch3;",
+    "lint": "npm run lint-ch1; npm run lint-ch2; npm run lint-ch3; npm run lint-ch4",
     "lint-ch1": "eslint -c .eslintrc --ignore-pattern **/node_modules 'ch1'",
     "lint-ch2": "eslint -c .eslintrc --ignore-pattern **/node_modules 'ch2'",
     "lint-ch3": "eslint -c .eslintrc --ignore-pattern **/node_modules 'ch3'",
+    "lint-ch4": "eslint -c .eslintrc --ignore-pattern **/node_modules 'ch4'",
     "precommit": "npm run lint",
     "test": "lab -t 100",
     "start": "npm run lint && node index.js"
