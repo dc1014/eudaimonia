@@ -242,3 +242,247 @@ server.route([
 ]);
 ```
 
+So the current method sucks because boilerplate. Look at that loop. So let's make a new, customer handler with the `server.handler()` method (wow I don't have to curry everything).
+
+`server.handler(name, method)` is the signature. method is an object which will have signature of `(route, options)`. **View names are passed in through options.**
+
+So, rip the logic out into the handler. In the future, coudl remove settings object from handler. Better to keep configs in a central location...declarative and all.
+
+So when creating a hapi server, can supply the app object in new server config object, with any custom configs. Accessible via `server.settings.app`
+Even better hapi let built-in view handler lets a context object, to be used as context when rendering the view.
+
+## SERVER METHODS
+
+**Now we're talking!**
+
+Functions attached to hapi server object. Can be accessed and called from whenerver server object is in scope. *Intended to be called from route handlers.*
+
+Use cases include:
+
+* server-side caching!
+* route prerequisites!
+* uhhh...math?
+
+Example:
+
+```
+server.route({
+    method: 'POST',
+    path: '/avg',
+    handler: (request, reply) => {
+        const values = request.payload.values;
+        const sum = 0;
+
+        for (let i = 0; i < values.length; ++i) {
+            sum += values[i];
+        }
+
+        const mean = sum / values.length;
+
+        reply({ mean });
+    }
+});
+```
+
+So let's say I want to reuse mean functionality. Enter `server.method()` ...method. Has a signature of 3 args, `server.method('name', function (...args, callback), { options })`. Where callback has a signature of `function(err, result)` and err is optional. Reply will occur within callback of the method (to keep Zalgo contained).
+
+Allows rewrite of above func as:
+
+```
+const mean = function (values, next) {
+    const sum = 0;
+
+    for (let i = 0; i < values.length; ++i) {
+        sum += values[i];
+    }
+
+    return next(null, sum / values.length);
+};
+
+server.method('mean', mean, {});
+
+server.route({
+    method: 'POST',
+    path: '/avg',
+    handler: (request, reply) => {
+
+        server.methods.mean(request.payload.values, (err, mean) => {
+
+            reply({ mean });
+        });
+    }
+});
+```
+
+An alternative syntax would be:
+
+```
+server.method({
+    name: 'mean',
+    method: mean,
+    options: {}
+});
+```
+
+**`server.method()` also takes an array!**
+
+```
+const methods = [
+    {
+        name: 'potato',
+        method: spud,
+        options: {}
+    }, {
+        name: 'hot-potato',
+        method: burn,
+        options: {}
+
+    }
+];
+
+server.method(methods);
+```
+
+## Route Prerequisites
+
+So callbacks. You love them, you hate them, you love to hate them (Wonder how Hapi and promises get along?).
+
+Hapi has a feature called *route prerequisites** which help simplify workflows involving multiple steps which must execute sequentially or in parallel.
+
+cool!
+
+For example, you could have a sequential workflow which is done concurrently or "in parallel" with another workflow. Natively, this is done by setting ugly boolean checks in the encompassing scope, and then the callbacks are responsible for checking these booleans.
+
+So route prereqs. `pre` for short as key in the route's config object. `pre` takes an array of tasks which have keys of `assign: 'name', method: function(request, reply)`. The prereqs are then available on the request object as `request.pre.name` where its value is the evaluation of the assigned method.
+
+Ideal for handling fs calls and that sort of stuff. *Now, combine this with registering`server.method()`, and supply the method to pre. Nice!*
+
+### Multiple Serial Prereqs
+
+Okay, so let's say you need to chain this stuff. Example: decrypt a payload:
+
+1. Read secret key from a .txt
+2. Decrypt payload
+3. translate
+4. execute handler
+
+OKAY! SO HERE'S THE MAGIC.
+
+1. **Supply the data to reply in each method.**
+2. **Give `pre` an array of methods.**
+3. **celebrate**
+
+### Parallel Prereqs
+
+Much more interesting. Let's say key is split in half.
+
+**GUESS WHAT? Just give the `pre` array an array of things you want done in parallel. SO SIMPLE**
+
+The methods will reply with the same process as sequential. BUT! The method which receives their replies needs to reference the results from each by name on the request object passed to the method, i.e. `const key = request.pre.readKey1 + request.pre.readKey2`
+
+Skipping exercises as they are tedious.
+
+## Managing File Uploads!
+
+So, hapi by default attempts to parse payload from an upcoming request based upon the existence and value of the content-type header. Examples include:
+
+* application/x-www-form-urlencoded (html forms)
+* application/json
+* multipart/form-data (for files!)
+
+This is expressed by setting the `enctype` attribute on the form tag.
+
+`<form enctype="multipart/form-data" action="/upload" method="post">`
+
+**Remember, hapi needs to be told how to handle payloads in config.payload object**
+
+Default values are `{ output: data, parse: true }`. Multipart/form-data is also parsed by default, *but the way this is consumed depends on payload.output option in the config!*
+
+* `{ output: 'data' }`
+    * reads files into memory,
+    * waiting until entire payload has been received and read into memory,
+    * attempting to parse each of the parts of the form into `request.payload`.
+    * Any text fields are strings.
+    * contents of uploaded files are:
+        * strings (for files with a text mime type such as text/plain)
+        * node.js Buffers (for all other types)
+
+### File qua string
+
+So let's say request has `request.payload.upload` and { output: 'data' } is set. You get a string, which could be used with Fs.writeFile.
+
+* When doing this, hapi drops content-type of name of file that has been uploaded. Only useful for when contents are all that matters*
+
+### File qua stream
+
+If `{ output: stream }` then hapi parses all text fields into strings in request.payload. All file uploads will be node stream objects. Stream objects will have new property `hapi` which is added by framework.
+
+* `hapi.filename` will also be equal to filename of uploaded file.
+* `hapi.headers['content-type'] is also available.
+
+So then just pipe the stream into a writeStream and you're done!
+
+### 3rd way - The file option with `payload.output`
+
+With `file` option hapi saves any files uploaded through multipart to FS as temp files, provides info (incluing path) inside the request.payload object. Any text fields are strings as with above options.
+
+The files will be saved inside dir specified by `payload.uploads` route config option. The default is value of `Os.tmpDir()` which is usually `//temp` on Wandows and `/tmp` for all sane operating systems.
+
+each saved file inside request.payload is an object with following props:
+
+* filename - filename of original file
+* path - path to temp save
+* headers - headers for file including content-type
+* bytes - l'size of l'file.
+
+Example:
+
+```
+server.route({
+    config: {
+        payload: {
+            parse: true,
+            output: 'file'
+        }
+    },
+    method: 'POST',
+    path: '/upload',
+    handler: function (request, reply) {
+
+        cosnt uploadName = request.payload.upload.filename;
+        cosnt uploadPath = request.payload.upload.path;
+        cosnt destination = Path.join(__dirname, 'uploads', uploadName);
+
+        Fs.rename(uploadPath, destination, (err) => {
+
+            if (err) {
+                throw err;
+            }
+
+            reply('ok');
+        });
+    }
+});
+```
+
+**So, in short, it just temps everything and you decide what to do with it.**
+
+### Additional Payload Settings
+
+Aside from `parse` and `output` others include:
+
+* `maxBytes`
+    * total payload size allowable.
+    * if exceeded 400 reponse.
+    * defaults to 1 MB
+* `timeout`
+    * max time in milliseconds allowed for receiving full payload
+    * if exceeded 408 response and handler terminated
+    * defaults to 10 seconds
+
+No upper limits! Be rational about this.
+
+
+
+
+
